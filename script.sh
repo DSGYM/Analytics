@@ -22,14 +22,13 @@ if [ "$CONT" = "y" ]; then
   ### Install Certbot
   sudo apt-get install certbot python-certbot-nginx
   ### Get the certificate only
-  sudo certbot certonly --nginx
-  
 else
   echo "SSL Certificates will not be installed"
 fi
 
 read -p 'Please enter your domain name: (Name must match the domain during certbox installation) ' domain
 
+sudo certbot certonly --standalone -d ${domain}
 sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
 sudo cp /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
 
