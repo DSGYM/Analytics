@@ -39,17 +39,95 @@ sudo chmod 777 ./compose/certs/privkey.pem
 sudo chmod 777 ./compose/certs/fullchain.pem
 sudo chmod 777 ./compose/shinyproxy/certificate.pfx
 
+sudo cp ./compose/certs/fullchain.pem ./compose/nginx/fullchain.pem
+sudo cp ./compose/certs/privkey.pem	./compose/nginx/privkey.pem
 
 cat > ./compose/nginx/Dockerfile <<EOF
 
 FROM nginx
 
-COPY ../certs/fullchain.pem /etc/certs/fullchain.pem
-COPY ../certs/privkey.pem /etc/certs/privkey.pem
+COPY fullchain.pem /etc/certs/fullchain.pem
+COPY privkey.pem /etc/certs/privkey.pem
 COPY nginx.conf /etc/certs/nginx.conf
 
 EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]
+
+EOF
+
+
+cat > ./compose/nginx/nginx.conf <<EOF
+
+events {
+    
+}
+
+http {
+    
+server {
+
+	root /var/www/html;
+
+	# Add index.php to the list if you are using PHP
+	index index.html index.htm index.nginx-debian.html;
+       server_name $domain; # managed by Certbot
+
+
+       location / {
+       proxy_pass          http://127.0.0.1:5000;
+
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+       proxy_read_timeout 600s;
+
+       proxy_redirect    off;
+       proxy_set_header  Host             $http_host;
+       proxy_set_header  X-Real-IP        $remote_addr;
+       proxy_set_header  X-Forwarded-For  $proxy_add_x_forwarded_for;
+       proxy_set_header  X-Forwarded-Proto $scheme;
+
+     }
+	 
+	 
+       location /auth/ {
+       proxy_pass          https://127.0.0.1:8443;
+
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection "upgrade";
+       proxy_read_timeout 600s;
+
+       proxy_redirect    off;
+       proxy_set_header  Host             $http_host;
+       proxy_set_header  X-Real-IP        $remote_addr;
+       proxy_set_header  X-Forwarded-For  $proxy_add_x_forwarded_for;
+       proxy_set_header  X-Forwarded-Proto $scheme;
+
+     }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+	
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+    ssl_certificate /etc/certs/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/certs/privkey.pem; # managed by Certbot
+
+}
+
+server {
+    if ($host = $domain) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+	listen 80 ;
+	listen [::]:80 ;
+    server_name $domain;
+    return 404; # managed by Certbot
+}
+
+}
 
 EOF
