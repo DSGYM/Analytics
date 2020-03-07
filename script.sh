@@ -2,9 +2,9 @@
 
 ### Make directories for Analytics Suite
 sudo apt-get update
+sudo apt-get upgrade
 
 sudo mkdir ./compose/certs
-sudo mkdir ./compose/nginx
 sudo mkdir ./compose/mariadbdata
 
 ### Install Docker
