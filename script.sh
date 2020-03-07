@@ -28,8 +28,29 @@ else
   echo "SSL Certificates will not be installed"
 fi
 
-
 read -p 'Please enter your domain name: (Name must match the domain during certbox installation) ' domain
 
-sudo mv /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
-sudo mv /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
+sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
+sudo cp /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
+
+openssl pkcs12 -inkey ./compose/certs/privkey.pem -in ./compose/certs/fullchain.pem -export -out ./compose/shinyproxy/certificate.pfx
+
+### ShinyProxy needs enough rights inside Docker container
+sudo chmod 777 ./compose/certs/privkey.pem
+sudo chmod 777 ./compose/certs/fullchain.pem
+sudo chmod 777 ./compose/shinyproxy/certificate.pfx
+
+
+cat > ./compose/nginx/Dockerfile <<EOF
+
+FROM nginx
+
+COPY ../certs/fullchain.pem /etc/certs/fullchain.pem
+COPY ../certs/privkey.pem /etc/certs/privkey.pem
+COPY nginx.conf /etc/certs/nginx.conf
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]
+
+EOF
