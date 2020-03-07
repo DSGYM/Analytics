@@ -1,11 +1,40 @@
 #!/bin/bash
 
-### Installation of Docker
+### Make directories for Analytics Suite
 sudo apt-get update
 
 sudo mkdir ./compose/certs
 sudo mkdir ./compose/nginx
 sudo mkdir ./compose/mariadbdata
+
+### Install Docker
+read -p "Do you want to install Docker and Docker Compose (y/n)?" CONT
+if [ "$CONT" = "y" ]; then
+    sudo apt-get install \
+		  apt-transport-https \
+		  ca-certificates \
+		  curl \
+		  gnupg-agent \
+		  software-properties-common
+
+sudo apt-key fingerprint 0EBFCD88
+
+sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+
+sudo apt-get update   
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+### Docker Compose
+sudo curl -L https://github.com/docker/compose/releases/download/1.26.0/docker-compose-`uname -s`-`uname -m` -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+else
+  echo "Docker will not be installed"
+fi
+
 
 ### Add Certbot PPA
 read -p "Do you want to install Certbox for SSL certifcates (y/n)?" CONT
@@ -39,18 +68,6 @@ sudo chmod 777 ./compose/shinyproxy/certificate.pfx
 sudo cp ./compose/certs/fullchain.pem ./compose/nginx/fullchain.pem
 sudo cp ./compose/certs/privkey.pem	./compose/nginx/privkey.pem
 
-cat > ./compose/nginx/Dockerfile <<EOF
-
-FROM nginx
-
-COPY fullchain.pem /etc/certs/fullchain.pem
-COPY privkey.pem /etc/certs/privkey.pem
-COPY nginx.conf /etc/certs/nginx.conf
-
-EXPOSE 80 443
-
-CMD ["nginx", "-g", "daemon off;"]
-EOF
 
 cat > ./compose/nginx/nginx.conf <<EOF
 
@@ -73,15 +90,15 @@ server {
        proxy_pass          http://127.0.0.1:5000;
 
        proxy_http_version 1.1;
-       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Upgrade \$http_upgrade;
        proxy_set_header Connection "upgrade";
        proxy_read_timeout 600s;
 
        proxy_redirect    off;
-       proxy_set_header  Host             $http_host;
-       proxy_set_header  X-Real-IP        $remote_addr;
-       proxy_set_header  X-Forwarded-For  $proxy_add_x_forwarded_for;
-       proxy_set_header  X-Forwarded-Proto $scheme;
+       proxy_set_header  Host             \$http_host;
+       proxy_set_header  X-Real-IP        \$remote_addr;
+       proxy_set_header  X-Forwarded-For  \$proxy_add_x_forwarded_for;
+       proxy_set_header  X-Forwarded-Proto \$scheme;
 
      }
 	 
@@ -90,15 +107,15 @@ server {
        proxy_pass          https://127.0.0.1:8443;
 
        proxy_http_version 1.1;
-       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Upgrade \$http_upgrade;
        proxy_set_header Connection "upgrade";
        proxy_read_timeout 600s;
 
        proxy_redirect    off;
-       proxy_set_header  Host             $http_host;
-       proxy_set_header  X-Real-IP        $remote_addr;
-       proxy_set_header  X-Forwarded-For  $proxy_add_x_forwarded_for;
-       proxy_set_header  X-Forwarded-Proto $scheme;
+       proxy_set_header  Host             \$http_host;
+       proxy_set_header  X-Real-IP        \$remote_addr;
+       proxy_set_header  X-Forwarded-For  \$proxy_add_x_forwarded_for;
+       proxy_set_header  X-Forwarded-Proto \$scheme;
 
      }
 
@@ -112,8 +129,8 @@ server {
 }
 
 server {
-    if ($host = $domain) {
-        return 301 https://$host$request_uri;
+    if (\$host = $domain) {
+        return 301 https://\$host\$request_uri;
     } # managed by Certbot
 
 
@@ -126,7 +143,50 @@ server {
 }
 EOF
 
-### Shinyproxy
-sudo git clone https://github.com/openanalytics/shinyproxy.git
+cat > ./compose/shinyproxy/application.yml <<EOF
+
+proxy:
+  port: 5000
+  #favicon-path: /opt/shinyproxy/favicon.ico
+  authentication: keycloak
+  admin-groups: admins
+  users:
+  - name: jack
+    password: password
+    groups: admins
+  - name: jeff
+    password: password
+  #container-backend: docker-swarm
+  docker:
+      internal-networking: true
+      container-network: sp-example-net
+  specs:
+  - id: 01_hello
+    display-name: Hello Application
+    description: Application which demonstrates the basics of a Shiny app
+    container-cmd: ["R", "-e", "shinyproxy::run_01_hello()"]
+    container-image: openanalytics/shinyproxy-demo
+    container-network: "\${proxy.docker.container-network}"
+    access-groups: test
+  - id: euler
+    display-name: Euler's number
+    container-cmd: ["R", "-e", "shiny::runApp('/root/euler')"]
+    container-image: euler-docker
+    container-network: "\${proxy.docker.container-network}"
+    access-groups: test
+  keycloak:
+      realm: master
+      auth-server-url: https://${domain}/auth/
+      resource: shinyoid
+      credentials-secret: 81705e08-e4cc-46c3-b5cb-0cc64f9f609e
+      
+logging:
+  file:
+    shinyproxy.log
+
+EOF
 
 
+### Create Docker Network to allow Communication between containers
+
+sudo docker network create -d overlay --attachable sp-example-net

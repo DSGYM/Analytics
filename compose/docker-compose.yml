@@ -1,0 +1,61 @@
+version: '3.7'
+services:
+  shinyproxy:
+    build: ./shinyproxy/
+    deploy: 
+      #replicas: 3
+    user: root:root
+    hostname: shinyproxy
+    image: shinyproxy-example
+    networks:
+      - sp-example-net
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+      - type: bind
+        source: ./shinyproxy/application.yml
+        target: /opt/shinyproxy/application.yml  
+    ports:
+      - 5000:5000
+  mariadb:
+    image: mariadb
+    networks:
+      - sp-example-net
+    volumes:
+      - type: bind
+        source: ./mariadbdata
+        target: /var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+  keycloak:
+    image: jboss/keycloak
+    networks:
+      - sp-example-net
+    volumes:
+      - type: bind
+        source: ./certs/fullchain.pem
+        target: /etc/x509/https/tls.crt
+      - type: bind
+        source: ./certs/privkey.pem
+        target: /etc/x509/https/tls.key
+      - ./theme/:/opt/jboss/keycloak/themes/custom/
+    environment:
+      - PROXY_ADDRESS_FORWARDING=true
+      - KEYCLOAK_USER=myadmin
+      - KEYCLOAK_PASSWORD=mypassword
+    ports:
+      - 8443:8443
+    restart: "no"
+  nginx: 
+    image: nginx
+    build: ./nginx/
+
+
+networks:
+  sp-example-net:
+    driver: overlay
+    attachable: true
