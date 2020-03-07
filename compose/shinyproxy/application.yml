@@ -1,0 +1,38 @@
+proxy:
+  port: 5000
+  #favicon-path: /opt/shinyproxy/favicon.ico
+  authentication: keycloak
+  admin-groups: admins
+  users:
+  - name: jack
+    password: password
+    groups: admins
+  - name: jeff
+    password: password
+  #container-backend: docker-swarm
+  docker:
+      internal-networking: true
+      container-network: sp-example-net
+  specs:
+  - id: 01_hello
+    display-name: Hello Application
+    description: Application which demonstrates the basics of a Shiny app
+    container-cmd: ["R", "-e", "shinyproxy::run_01_hello()"]
+    container-image: openanalytics/shinyproxy-demo
+    container-network: "${proxy.docker.container-network}"
+    access-groups: test
+  - id: euler
+    display-name: Euler's number
+    container-cmd: ["R", "-e", "shiny::runApp('/root/euler')"]
+    container-image: euler-docker
+    container-network: "${proxy.docker.container-network}"
+    access-groups: test
+  keycloak:
+      realm: master
+      auth-server-url: https://analytics.data-mastery.com/auth/
+      resource: shinyoid
+      credentials-secret: 81705e08-e4cc-46c3-b5cb-0cc64f9f609e
+      
+logging:
+  file:
+    shinyproxy.log

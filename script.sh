@@ -3,9 +3,7 @@
 ### Installation of Docker
 sudo apt-get update
 
-sudo mkdir ./compose
 sudo mkdir ./compose/certs
-sudo mkdir ./compose/shinyproxy
 sudo mkdir ./compose/nginx
 sudo mkdir ./compose/mariadbdata
 
