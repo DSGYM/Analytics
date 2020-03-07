@@ -10,11 +10,6 @@ sudo mkdir ./compose/shinyproxy
 sudo mkdir ./compose/nginx
 sudo mkdir ./compose/mariadbdata
 
-
-read -p 'Please enter your domain name: ' uservar
-
-echo Thankyou $uservar we now have your login details
-
 ### Add Certbot PPA
 read -p "Do you want to install Certbox for SSL certifcates (y/n)?" CONT
 if [ "$CONT" = "y" ]; then
@@ -32,3 +27,9 @@ if [ "$CONT" = "y" ]; then
 else
   echo "SSL Certificates will not be installed"
 fi
+
+
+read -p 'Please enter your domain name: (Name must match the domain during certbox installation) ' domain
+
+sudo mv /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
+sudo mv /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
