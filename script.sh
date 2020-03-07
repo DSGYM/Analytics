@@ -5,7 +5,6 @@ sudo apt-get update
 
 sudo mkdir ./compose
 sudo mkdir ./compose/certs
-sudo mkdir ./compose/shinyproxy_raw
 sudo mkdir ./compose/shinyproxy
 sudo mkdir ./compose/nginx
 sudo mkdir ./compose/mariadbdata
@@ -32,7 +31,7 @@ sudo certbot certonly --standalone -d ${domain}
 sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
 sudo cp /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
 
-openssl pkcs12 -inkey ./compose/certs/privkey.pem -in ./compose/certs/fullchain.pem -export -out ./compose/shinyproxy/certificate.pfx
+openssl pkcs12 -inkey ./compose/certs/privkey.pem -in ./compose/certs/fullchain.pem -export -out ./compose/shinyproxy/certificate.pfx -passout pass:changeit
 
 ### ShinyProxy needs enough rights inside Docker container
 sudo chmod 777 ./compose/certs/privkey.pem
@@ -53,9 +52,7 @@ COPY nginx.conf /etc/certs/nginx.conf
 EXPOSE 80 443
 
 CMD ["nginx", "-g", "daemon off;"]
-
 EOF
-
 
 cat > ./compose/nginx/nginx.conf <<EOF
 
@@ -129,5 +126,9 @@ server {
 }
 
 }
-
 EOF
+
+### Shinyproxy
+sudo git clone https://github.com/openanalytics/shinyproxy.git
+
+
