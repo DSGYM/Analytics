@@ -17,6 +17,7 @@ if [ "$CONT" = "y" ]; then
 		  gnupg-agent \
 		  software-properties-common
 
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 sudo apt-key fingerprint 0EBFCD88
 
 sudo add-apt-repository \
@@ -33,7 +34,6 @@ sudo curl -L "https://github.com/docker/compose/releases/download/1.24.0/docker-
 else
   echo "Docker will not be installed"
 fi
-
 
 ### Add Certbot PPA
 read -p "Do you want to install Certbox for SSL certifcates (y/n)?" CONT
@@ -53,6 +53,7 @@ fi
 
 read -p 'Please enter your domain name: (Name must match the domain during certbox installation) ' domain
 
+sudo systemctl stop nginx
 sudo certbot certonly --standalone -d ${domain}
 sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
 sudo cp /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
@@ -187,5 +188,6 @@ EOF
 
 
 ### Create Docker Network to allow Communication between containers
-
+ip=$(curl ifconfig.me);
+sudo docker swarm init --advertise-addr $ip;
 sudo docker network create -d overlay --attachable sp-example-net
