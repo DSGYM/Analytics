@@ -57,7 +57,7 @@ read -p 'Please enter your domain name: (Name must match the domain during certb
 sudo systemctl stop nginx
 sudo certbot certonly --standalone -d ${domain}
 sudo cp /etc/letsencrypt/live/${domain}/fullchain.pem ./compose/certs/fullchain.pem
-sudo cp /etc/letsencrypt/live/${domain}/privkey.pem	./compose/certs/privkey.pem
+sudo cp /etc/letsencrypt/live/${domain}/privkey.pem ./compose/certs/privkey.pem
 
 openssl pkcs12 -inkey ./compose/certs/privkey.pem -in ./compose/certs/fullchain.pem -export -out ./compose/shinyproxy/certificate.pfx -passout pass:changeit
 
